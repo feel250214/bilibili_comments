@@ -142,7 +142,7 @@ def text_to_encoded(keyword_list):
     return encoded_list
 
 
-def request_bili(url, params=None):
+def request_bili(url, params=None, print_url=True):
     """
     嘗試訪問網站
     """
@@ -158,7 +158,8 @@ def request_bili(url, params=None):
                 response = requests.get(url, headers=headers)
             n += 1
             if response.status_code == 200:
-                print(url + "访问成功")
+                if print_url:
+                    print(url + "访问成功")
                 return response
             else:
                 n += 1
@@ -171,7 +172,7 @@ def request_bili(url, params=None):
             continue
 
 
-def get_videos_url(encode, is_save_to_excel=False):
+def get_videos_url(encodes, is_save_to_excel=True):
     """
     获得各个视频的url
     """
@@ -179,9 +180,9 @@ def get_videos_url(encode, is_save_to_excel=False):
     filtered_names = []
     video_names_list = []
     video_urls_list = []
-    for encoded in encode:
+    for encoded in encodes:
         o = 0
-        for page in range(1, 25):
+        for page in range(1, 25):   # page页数最多25
             if o == 0:
                 url = 'https://search.bilibili.com/all?keyword=' + str(encoded) + '&search_source=1'
             else:
@@ -198,10 +199,11 @@ def get_videos_url(encode, is_save_to_excel=False):
             o += 42
 
         # 筛选以 //www.bilibili.com/ 开头的 URL 并同步删除对应名字，去除直播和课程视频
-        for url, name in zip(video_urls_list, video_names_list):
-            if url.startswith('//www.bilibili.com/'):
-                filtered_urls.append("https:" + url)
-                filtered_names.append(name)
+    for url, name in zip(video_urls_list, video_names_list):
+        if url.startswith('//www.bilibili.com/'):
+            filtered_urls.append("https:" + url)
+            filtered_names.append(name)
+    print("去除直播和课程视频后共有" + str(len(filtered_urls)) + "条视频")
     if is_save_to_excel:
         names_save_to_excel(video_urls_list, video_names_list)
     return filtered_urls, filtered_names
@@ -277,7 +279,7 @@ def get_comments(url, mode=3, pages=10):
         params['w_rid'] = _bili_w_rid(params)
 
         try:
-            response = request_bili(comment_url, params=params)
+            response = request_bili(comment_url, params=params, print_url=False)
         except:
             pass
         comments = []
@@ -381,10 +383,17 @@ if __name__ == '__main__':
     }
     comments_list = []
     sexs_list = []
+    comments = []
+    sexs = []
 
     keyword = ["新能源"]
-    encoded = text_to_encoded(keyword)
-    [video_urls_list, video_names_list] = get_videos_url(encoded, False)
-    for video_urls in video_urls_list:
-        [comments_list, sexs_list] = get_comments(video_urls, 3, 2000)
+    encodes = text_to_encoded(keyword)
+    [video_urls_list, video_names_list] = get_videos_url(encodes, False)
+    for video_url in video_urls_list:
+        [comments, sexs] = get_comments(video_url, 3, 2000)
+        comments_list += comments
+        sexs_list += sexs
+        print(video_url + "共抓取" + str(len(comments)) + "条评论")
+        print("现在一共抓取" + str(len(comments_list)) + "条评论")
     comments_save_to_excel(comments_list, sexs_list)
+    # word_frequency_xlsx()
